@@ -33,6 +33,7 @@ jobs:
             sleep 1
           done
 
+          grep -q "</h1>" /tmp/page.html
           grep -q "Vikaproni" /tmp/page.html
           echo "OK"
 
