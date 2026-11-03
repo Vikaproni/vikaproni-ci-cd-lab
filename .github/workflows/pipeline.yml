@@ -1,0 +1,79 @@
+name: Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: HTML lint
+        id: html-lint
+        continue-on-error: true
+        run: |
+          npm install -g htmlhint
+          htmlhint index.html
+
+      - name: Build image
+        run: docker build -t site:test .
+
+      - name: Smoke test container
+        run: |
+          docker run -d --name test-site -p 8080:80 site:test
+
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080 > /tmp/page.html; then break; fi
+            sleep 1
+          done
+
+          grep -q "Vikaproni" /tmp/page.html
+          echo "OK"
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f test-site || true
+
+      - name: Check HTML validation result
+        if: always()
+        run: |
+          if [ "${{ steps.html-lint.outcome }}" != "success" ]; then
+            echo "HTML validation failed"
+            exit 1
+          fi
+
+  release:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:latest
