@@ -58,7 +58,7 @@ jobs:
       packages: write
 
     env:
-      IMAGE: ghcr.io/${{ github.repository }}
+      IMAGE: ghcr.io/vikaproni/vikaproni-ci-cd-lab
 
     steps:
       - name: Checkout
