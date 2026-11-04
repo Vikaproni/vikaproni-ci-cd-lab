@@ -15,39 +15,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: HTML lint
-        id: html-lint
-        continue-on-error: true
         run: |
           npm install -g htmlhint
           htmlhint index.html
 
       - name: Build image
+        if: always()
         run: docker build -t site:test .
 
+
       - name: Smoke test container
+        if: always()
         run: |
+        run: |
+          set -x
           docker run -d --name test-site -p 8080:80 site:test
-
-          for i in $(seq 1 10); do
-            if curl -sf http://localhost:8080 > /tmp/page.html; then break; fi
-            sleep 1
-          done
-
-          grep -q "</h1>" /tmp/page.html
-          grep -q "Vikaproni" /tmp/page.html
+          sleep 5
+          curl -s http://localhost:8080 > page.html
+          grep -q "</h1>" page.html
+          grep -q "Vikaproni" page.html
           echo "OK"
 
       - name: Cleanup
         if: always()
         run: docker rm -f test-site || true
 
-      - name: Check HTML validation result
-        if: always()
-        run: |
-          if [ "${{ steps.html-lint.outcome }}" != "success" ]; then
-            echo "HTML validation failed"
-            exit 1
-          fi
 
   release:
     needs: ci
