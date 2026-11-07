@@ -38,6 +38,11 @@ jobs:
         if: always()
         run: docker rm -f test-site || true
 
+      - name: Hello
+        run: |
+          set -x
+          echo "hello world"
+
   release:
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
